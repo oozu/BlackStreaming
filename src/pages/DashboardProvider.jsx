@@ -197,7 +197,7 @@ const DashboardProvider = () => {
           buyerPhone: data.phoneNumber || "Sin teléfono",
           date: data.saleDate ? data.saleDate : data.createdAt || new Date(),
           amount: parseFloat(data.price) || 0,
-          status: data.status || "completed",
+          status: data.status || "completed", // Cambiar de "pending" a "completed"
           accountDetails: data.accountDetails || { email: "No disponible", password: "No disponible", profile: "N/A", pin: "" },
         };
       });
@@ -645,6 +645,19 @@ const DashboardProvider = () => {
   const calculateAvailableBalance = () => balanceLoading ? 0 : providerBalance;
   const availableBalance = calculateAvailableBalance();
   const totalStock = products.reduce((total, product) => total + (parseInt(product.stock) || 0), 0);
+  const handleActivateOrder = async (orderId) => {
+    try {
+      const orderRef = doc(db, "sales", orderId);
+      await updateDoc(orderRef, {
+        status: "completed",
+        updatedAt: serverTimestamp(),
+      });
+      setSuccessModal({ open: true, message: "Pedido activado exitosamente!" });
+    } catch (error) {
+      console.error("Error al activar el pedido:", error);
+      setError("Error al activar el pedido");
+    }
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -1246,108 +1259,118 @@ const DashboardProvider = () => {
           </div>
         );
 
-      case "pedidos":
-        return (
-          <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
-              <FiShoppingCart className="mr-2" /> Pedidos
-            </h3>
-            {orders.length > 0 ? (
-              <div className="space-y-6">
-                {orders.map((order, index) => {
-                  const isOnDemand = order.status === "pending";
-                  const statusIcon = isOnDemand
-                    ? <FiClock className="text-yellow-400" />
-                    : <FiCheckCircle className="text-green-400" />;
-                  return (
-                    <div key={index} className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
-                      <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
-                        <div className="flex items-center space-x-3">
-                          {statusIcon}
-                          <div>
-                            <h4 className="font-semibold text-white">{order.productName}</h4>
-                            <p className="text-xs text-gray-400">Categoría: {getCategoryDisplayName(order.category)}</p>
-                          </div>
-                        </div>
-                        <div className="text-right flex items-center space-x-2">
-                          <p className="text-sm font-medium text-white">S/ {(order.amount || 0).toFixed(2)}</p>
-                          <p className="text-xs text-gray-400">{formatDate(order.date)}</p>
-                          <button
-                            onClick={() => handleEditOrder(order)}
-                            className="text-cyan-400 hover:text-cyan-500"
-                            title="Editar cuenta"
-                          >
-                            <FiEdit2 />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
-                            <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
-                              <FiUser className="mr-2" /> Información del Comprador
-                            </h5>
-                            <div className="space-y-2 text-gray-300">
-                              <p>
-                                <span className="font-medium text-gray-400">Nombre:</span> 
-                                <span className="block text-white">{order.buyer}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Email:</span> 
-                                <span className="block text-white">{order.buyerEmail}</span>
-                              </p>
-                              <p>
-                                <span className="font-medium text-gray-400">Teléfono:</span> 
-                                <span className="block text-white">{order.buyerPhone}</span>
-                              </p>
+        case "pedidos":
+          return (
+            <div className="bg-gray-800/50 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-xl max-w-6xl mx-auto border border-gray-700/50">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center">
+                <FiShoppingCart className="mr-2" /> Pedidos
+              </h3>
+              {orders.length > 0 ? (
+                <div className="space-y-6">
+                  {orders.map((order, index) => {
+                    const isOnDemand = order.status === "pending";
+                    const statusIcon = isOnDemand
+                      ? <FiClock className="text-yellow-400" />
+                      : <FiCheckCircle className="text-green-400" />;
+                    return (
+                      <div key={index} className="border border-gray-600/50 rounded-2xl overflow-hidden hover:shadow-2xl transition-all duration-300">
+                        <div className="bg-gray-700/50 backdrop-blur-sm px-4 py-3 border-b border-gray-600/50 flex justify-between items-center">
+                          <div className="flex items-center space-x-3">
+                            {statusIcon}
+                            <div>
+                              <h4 className="font-semibold text-white">{order.productName}</h4>
+                              <p className="text-xs text-gray-400">Categoría: {getCategoryDisplayName(order.category)}</p>
                             </div>
                           </div>
-                          <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
-                            <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
-                              <FiUser className="mr-2" /> Detalles de la Cuenta
-                            </h5>
-                            <div className="space-y-2 text-gray-300">
-                              {order.accountDetails ? (
-                                <>
-                                  <p>
-                                    <span className="font-medium text-gray-400">Email:</span> 
-                                    <span className="block text-white break-all">{order.accountDetails.email}</span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium text-gray-400">Contraseña:</span> 
-                                    <span className="block text-white break-all">{order.accountDetails.password}</span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium text-gray-400">Perfil:</span> 
-                                    <span className="block text-white">{order.accountDetails.profile || "N/A"}</span>
-                                  </p>
-                                  <p>
-                                    <span className="font-medium text-gray-400">PIN:</span> 
-                                    <span className="block text-white">{order.accountDetails.pin || "N/A"}</span>
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-gray-400">No disponible</p>
-                              )}
+                          <div className="text-right flex items-center space-x-2">
+                            <p className="text-sm font-medium text-white">S/ {(order.amount || 0).toFixed(2)}</p>
+                            <p className="text-xs text-gray-400">{formatDate(order.date)}</p>
+                            <button
+                              onClick={() => handleEditOrder(order)}
+                              className="text-cyan-400 hover:text-cyan-500"
+                              title="Editar cuenta"
+                            >
+                              <FiEdit2 />
+                            </button>
+                            {/* Agregar botón Activar Pedido aquí */}
+                            {order.status === "pending" && (
+                              <button
+                                onClick={() => handleActivateOrder(order.id)}
+                                className="text-green-400 hover:text-green-500"
+                                title="Activar pedido"
+                              >
+                                <FiCheck />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
+                              <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
+                                <FiUser className="mr-2" /> Información del Comprador
+                              </h5>
+                              <div className="space-y-2 text-gray-300">
+                                <p>
+                                  <span className="font-medium text-gray-400">Nombre:</span> 
+                                  <span className="block text-white">{order.buyer}</span>
+                                </p>
+                                <p>
+                                  <span className="font-medium text-gray-400">Email:</span> 
+                                  <span className="block text-white">{order.buyerEmail}</span>
+                                </p>
+                                <p>
+                                  <span className="font-medium text-gray-400">Teléfono:</span> 
+                                  <span className="block text-white">{order.buyerPhone}</span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="bg-gray-700/50 backdrop-blur-sm p-4 rounded-2xl border border-gray-600/50">
+                              <h5 className="text-sm font-medium text-cyan-400 mb-3 flex items-center">
+                                <FiUser className="mr-2" /> Detalles de la Cuenta
+                              </h5>
+                              <div className="space-y-2 text-gray-300">
+                                {order.accountDetails ? (
+                                  <>
+                                    <p>
+                                      <span className="font-medium text-gray-400">Email:</span> 
+                                      <span className="block text-white break-all">{order.accountDetails.email}</span>
+                                    </p>
+                                    <p>
+                                      <span className="font-medium text-gray-400">Contraseña:</span> 
+                                      <span className="block text-white break-all">{order.accountDetails.password}</span>
+                                    </p>
+                                    <p>
+                                      <span className="font-medium text-gray-400">Perfil:</span> 
+                                      <span className="block text-white">{order.accountDetails.profile || "N/A"}</span>
+                                    </p>
+                                    <p>
+                                      <span className="font-medium text-gray-400">PIN:</span> 
+                                      <span className="block text-white">{order.accountDetails.pin || "N/A"}</span>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-gray-400">No disponible</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <FiShoppingCart className="mx-auto text-4xl text-gray-400 mb-3" />
-                <h4 className="text-lg font-medium text-gray-300">No hay pedidos registrados</h4>
-                <p className="text-gray-400">
-                  Los pedidos de tus productos aparecerán aquí.
-                </p>
-              </div>
-            )}
-          </div>
-        );
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FiShoppingCart className="mx-auto text-4xl text-gray-400 mb-3" />
+                  <h4 className="text-lg font-medium text-gray-300">No hay pedidos registrados</h4>
+                  <p className="text-gray-400">
+                    Los pedidos de tus productos aparecerán aquí.
+                  </p>
+                </div>
+              )}
+            </div>
+          );
 
       case "retiros":
         return (
